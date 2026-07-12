@@ -1,0 +1,38 @@
+name: Сбор статистики YouTube
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # каждый час
+  workflow_dispatch:        # + кнопка ручного запуска
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Сбор данных
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+        run: python collect.py
+
+      - name: Коммит данных
+        run: |
+          git config user.name "stats-bot"
+          git config user.email "actions@github.com"
+          git add data/
+          git diff --cached --quiet && echo "Нет изменений" && exit 0
+          git commit -m "data: $(date -u '+%Y-%m-%d %H:%M')"
+          git pull --rebase origin ${{ github.ref_name }}
+          git push
