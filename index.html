@@ -118,7 +118,10 @@
 <div class="wrap">
   <div class="head">
     <h1>Топ видео по приросту просмотров</h1>
-    <button class="gear" id="gearBtn">⚙ Каналы</button>
+    <div style="display:flex; gap:8px;">
+      <button class="gear" id="refreshBtn">⟳ Обновить</button>
+      <button class="gear" id="gearBtn">⚙ Каналы</button>
+    </div>
   </div>
   <div class="updated" id="updated">Загрузка…</div>
 
@@ -243,19 +246,24 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   render();
 });
 
-fetch("data/stats.json?t=" + Date.now())
-  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-  .then(d => {
-    allVideos = d.videos || [];
-    document.getElementById("updated").textContent =
-      "Обновлено: " + timeAgo(d.generated) + " · Видео в базе: " + allVideos.length;
-    render();
-  })
-  .catch(() => {
-    document.getElementById("list").innerHTML =
-      '<div class="msg">Данных ещё нет.<br>Убедись, что сборщик в GitHub Actions запускался хотя бы один раз.</div>';
-    document.getElementById("updated").textContent = "";
-  });
+function loadStats() {
+  document.getElementById("updated").textContent = "Загрузка…";
+  fetch("data/stats.json?t=" + Date.now())
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(d => {
+      allVideos = d.videos || [];
+      document.getElementById("updated").textContent =
+        "Обновлено: " + timeAgo(d.generated) + " · Видео в базе: " + allVideos.length;
+      render();
+    })
+    .catch(() => {
+      document.getElementById("list").innerHTML =
+        '<div class="msg">Данных ещё нет.<br>Убедись, что сборщик в GitHub Actions запускался хотя бы один раз.</div>';
+      document.getElementById("updated").textContent = "";
+    });
+}
+loadStats();
+document.getElementById("refreshBtn").onclick = loadStats;
 
 /* ================= управление каналами ================= */
 const GH = "https://api.github.com";
