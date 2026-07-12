@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Топ видео по приросту просмотров</title>
+<style>
+  :root {
+    --bg: #0f0f13; --card: #1a1a22; --card-hover: #22222c;
+    --text: #f1f1f4; --muted: #9a9aa8; --accent: #ff4b4b;
+    --green: #3ddc84; --border: #2a2a36;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    min-height: 100vh; padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .updated { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab {
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+    padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px;
+    transition: all .15s;
+  }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .tab:hover:not(.active) { background: var(--card-hover); color: var(--text); }
+
+  .card {
+    display: flex; gap: 14px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; margin-bottom: 10px; text-decoration: none; color: inherit;
+    transition: background .15s; align-items: center;
+  }
+  .card:hover { background: var(--card-hover); }
+  .rank { min-width: 30px; text-align: center; font-size: 16px; font-weight: 700; color: var(--muted); }
+  .card:nth-child(-n+3) .rank { color: var(--accent); }
+  .thumb {
+    width: 160px; min-width: 160px; aspect-ratio: 16/9; border-radius: 8px;
+    object-fit: cover; background: #000;
+  }
+  .info { flex: 1; min-width: 0; }
+  .title {
+    font-size: 15px; font-weight: 600; line-height: 1.35; margin-bottom: 6px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .channel { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .delta { font-size: 16px; font-weight: 700; color: var(--green); }
+  .delta small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+  .partial { color: #e8b23d; font-size: 11px; margin-left: 6px; }
+
+  .pager { display: flex; gap: 6px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+  .pbtn {
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    min-width: 40px; padding: 8px 0; border-radius: 8px; cursor: pointer; font-size: 14px;
+  }
+  .pbtn.active { background: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .msg { text-align: center; color: var(--muted); padding: 60px 0; font-size: 15px; }
+
+  /* ---- панель каналов ---- */
+  .gear {
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; white-space: nowrap;
+  }
+  .gear:hover { background: var(--card-hover); }
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; margin-bottom: 20px; display: none;
+  }
+  .panel.open { display: block; }
+  .panel h2 { font-size: 16px; margin-bottom: 12px; }
+  .chan-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    border-bottom: 1px solid var(--border); font-size: 14px;
+  }
+  .chan-row span { flex: 1; word-break: break-all; }
+  .del {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 13px;
+  }
+  .del:hover { color: var(--accent); border-color: var(--accent); }
+  .addrow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .inp {
+    flex: 1; min-width: 200px; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 9px 12px; font-size: 14px;
+  }
+  .btn {
+    background: var(--accent); border: none; color: #fff; font-weight: 600;
+    border-radius: 8px; padding: 9px 18px; cursor: pointer; font-size: 14px;
+  }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.gray { background: var(--card-hover); border: 1px solid var(--border); font-weight: 400; }
+  .pstatus { font-size: 13px; margin-top: 10px; color: var(--muted); min-height: 18px; }
+  .pstatus.err { color: var(--accent); }
+  .pstatus.ok { color: var(--green); }
+  .hint { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+  .hint a { color: #6ab7ff; }
+
+  @media (max-width: 560px) {
+    .thumb { width: 110px; min-width: 110px; }
+    .title { font-size: 13px; }
+    .rank { min-width: 22px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>Топ видео по приросту просмотров</h1>
+    <button class="gear" id="gearBtn">⚙ Каналы</button>
+  </div>
+  <div class="updated" id="updated">Загрузка…</div>
+
+  <div class="panel" id="panel">
+    <h2>Отслеживаемые каналы</h2>
+    <div id="tokenBlock" style="display:none">
+      <div class="hint">
+        Чтобы управлять каналами с этой страницы, нужен твой токен GitHub (вставляется один раз, хранится только в этом браузере).<br>
+        1. Открой <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">создание токена</a> →
+        Token name: любое → Repository access: <b>Only select repositories</b> → выбери этот репозиторий.<br>
+        2. Permissions → Repository permissions: <b>Contents: Read and write</b> и <b>Actions: Read and write</b>.<br>
+        3. Generate token → скопируй и вставь сюда:
+      </div>
+      <div class="addrow">
+        <input class="inp" id="tokenInp" type="password" placeholder="github_pat_...">
+        <button class="btn" id="tokenSave">Сохранить токен</button>
+      </div>
+    </div>
+    <div id="chanList"></div>
+    <div class="addrow" id="addBlock" style="display:none">
+      <input class="inp" id="chanInp" placeholder="https://www.youtube.com/@НазваниеКанала">
+      <button class="btn" id="chanAdd">Добавить</button>
+      <button class="btn gray" id="tokenForget" title="Удалить токен из этого браузера">Забыть токен</button>
+    </div>
+    <div class="pstatus" id="pstatus"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-period="d24">За 24 часа</button>
+    <button class="tab" data-period="d7">За неделю</button>
+    <button class="tab" data-period="d30">За месяц</button>
+  </div>
+  <div id="list"><div class="msg">Загрузка данных…</div></div>
+  <div class="pager" id="pager"></div>
+</div>
+
+<script>
+/* ================= список видео ================= */
+const PER_PAGE = 10, MAX_PAGES = 5;
+let allVideos = [], period = "d24", page = 1;
+
+const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1).replace(".0","") + " млн"
+             : n >= 1e3 ? (n/1e3).toFixed(1).replace(".0","") + " тыс."
+             : String(n);
+
+function timeAgo(ts) {
+  const m = Math.round((Date.now()/1000 - ts) / 60);
+  if (m < 1) return "только что";
+  if (m < 60) return m + " мин назад";
+  const h = Math.round(m/60);
+  if (h < 48) return h + " ч назад";
+  return Math.round(h/24) + " дн назад";
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g,
+    c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function render() {
+  const sorted = [...allVideos].sort((a,b) => (b[period]||0) - (a[period]||0));
+  const top = sorted.slice(0, PER_PAGE * MAX_PAGES);
+  const pages = Math.max(1, Math.ceil(top.length / PER_PAGE));
+  if (page > pages) page = 1;
+  const slice = top.slice((page-1)*PER_PAGE, page*PER_PAGE);
+
+  const list = document.getElementById("list");
+  if (!slice.length) {
+    list.innerHTML = '<div class="msg">Пока нет данных — сборщик ещё не накопил историю.<br>Загляни через час-другой.</div>';
+  } else {
+    list.innerHTML = slice.map((v,i) => `
+      <a class="card" href="${v.url}" target="_blank" rel="noopener">
+        <div class="rank">${(page-1)*PER_PAGE + i + 1}</div>
+        <img class="thumb" src="${v.thumb}" loading="lazy" alt="">
+        <div class="info">
+          <div class="title">${escapeHtml(v.title)}</div>
+          <div class="channel">${escapeHtml(v.channel)}</div>
+          <div class="delta">+${fmt(v[period]||0)}
+            <small>всего: ${fmt(v.views)}</small>
+            ${v[period+"_full"] === false ? '<span class="partial">⏳ история ещё копится</span>' : ''}
+          </div>
+        </div>
+      </a>`).join("");
+  }
+
+  const pager = document.getElementById("pager");
+  pager.innerHTML = "";
+  if (pages > 1) {
+    for (let p = 1; p <= pages; p++) {
+      const b = document.createElement("button");
+      b.className = "pbtn" + (p === page ? " active" : "");
+      b.textContent = p;
+      b.onclick = () => { page = p; render(); window.scrollTo({top:0, behavior:"smooth"}); };
+      pager.appendChild(b);
+    }
+  }
+}
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  period = t.dataset.period;
+  page = 1;
+  render();
+});
+
+fetch("data/stats.json?t=" + Date.now())
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(d => {
+    allVideos = d.videos || [];
+    document.getElementById("updated").textContent =
+      "Обновлено: " + timeAgo(d.generated) + " · Видео в базе: " + allVideos.length;
+    render();
+  })
+  .catch(() => {
+    document.getElementById("list").innerHTML =
+      '<div class="msg">Данных ещё нет.<br>Убедись, что сборщик в GitHub Actions запускался хотя бы один раз.</div>';
+    document.getElementById("updated").textContent = "";
+  });
+
+/* ================= управление каналами ================= */
+const GH = "https://api.github.com";
+let fileSha = null, headerLines = [], channels = [];
+
+function repoInfo() {
+  const saved = localStorage.getItem("gh_repo");
+  if (saved) return saved.split("/");
+  const h = location.hostname;
+  const parts = location.pathname.split("/").filter(Boolean);
+  if (h.endsWith(".github.io") && parts.length) {
+    const val = h.split(".")[0] + "/" + parts[0];
+    localStorage.setItem("gh_repo", val);
+    return val.split("/");
+  }
+  const inp = prompt("Укажи репозиторий в формате ник/имя-репозитория:");
+  if (inp && inp.includes("/")) {
+    localStorage.setItem("gh_repo", inp.trim());
+    return inp.trim().split("/");
+  }
+  return null;
+}
+
+const token = () => localStorage.getItem("gh_token") || "";
+const status = (t, cls) => {
+  const el = document.getElementById("pstatus");
+  el.textContent = t; el.className = "pstatus " + (cls || "");
+};
+
+function ghHeaders(withAuth) {
+  const h = { "Accept": "application/vnd.github+json" };
+  if (withAuth && token()) h["Authorization"] = "Bearer " + token();
+  return h;
+}
+
+const b64decode = s => decodeURIComponent(escape(atob(s.replace(/\n/g,""))));
+const b64encode = s => btoa(unescape(encodeURIComponent(s)));
+
+async function loadChannels() {
+  const ri = repoInfo();
+  if (!ri) { status("Репозиторий не задан", "err"); return; }
+  status("Загружаю список…");
+  try {
+    const r = await fetch(`${GH}/repos/${ri[0]}/${ri[1]}/contents/channels.txt?t=${Date.now()}`,
+                          { headers: ghHeaders(true) });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    fileSha = j.sha;
+    const lines = b64decode(j.content).split("\n");
+    headerLines = lines.filter(l => l.trim().startsWith("#"));
+    channels = lines.map(l => l.trim()).filter(l => l && !l.startsWith("#"));
+    drawChannels();
+    status("");
+  } catch (e) {
+    status("Не удалось загрузить channels.txt (" + e.message + ")", "err");
+  }
+}
+
+function drawChannels() {
+  const el = document.getElementById("chanList");
+  el.innerHTML = channels.length
+    ? channels.map((c, i) => `
+        <div class="chan-row">
+          <span>${escapeHtml(c)}</span>
+          <button class="del" data-i="${i}">удалить</button>
+        </div>`).join("")
+    : '<div class="hint">Список пуст — добавь первый канал.</div>';
+  el.querySelectorAll(".del").forEach(b => b.onclick = () => {
+    if (!token()) { status("Сначала сохрани токен", "err"); return; }
+    if (!confirm("Удалить канал?\n" + channels[b.dataset.i])) return;
+    channels.splice(b.dataset.i, 1);
+    saveChannels("Удалён канал");
+  });
+}
+
+async function saveChannels(msg) {
+  const ri = repoInfo();
+  status("Сохраняю…");
+  try {
+    const body = {
+      message: msg,
+      content: b64encode(headerLines.join("\n") + "\n" + channels.join("\n") + "\n"),
+      sha: fileSha,
+    };
+    const r = await fetch(`${GH}/repos/${ri[0]}/${ri[1]}/contents/channels.txt`, {
+      method: "PUT", headers: ghHeaders(true), body: JSON.stringify(body),
+    });
+    if (r.status === 401 || r.status === 403) {
+      localStorage.removeItem("gh_token");
+      updatePanelMode();
+      throw new Error("токен не подошёл — вставь заново");
+    }
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    fileSha = j.content.sha;
+    drawChannels();
+    // запустить сбор сразу, чтобы не ждать часа
+    await fetch(`${GH}/repos/${ri[0]}/${ri[1]}/actions/workflows/collect.yml/dispatches`, {
+      method: "POST", headers: ghHeaders(true),
+      body: JSON.stringify({ ref: "main" }),
+    }).catch(() => {});
+    status("Сохранено ✓ Сбор запущен — свежие данные через ~2 минуты (обнови страницу)", "ok");
+  } catch (e) {
+    status("Ошибка сохранения: " + e.message, "err");
+    loadChannels();
+  }
+}
+
+function updatePanelMode() {
+  const has = !!token();
+  document.getElementById("tokenBlock").style.display = has ? "none" : "block";
+  document.getElementById("addBlock").style.display = has ? "flex" : "none";
+}
+
+document.getElementById("gearBtn").onclick = () => {
+  const p = document.getElementById("panel");
+  p.classList.toggle("open");
+  if (p.classList.contains("open")) { updatePanelMode(); loadChannels(); }
+};
+
+document.getElementById("tokenSave").onclick = () => {
+  const v = document.getElementById("tokenInp").value.trim();
+  if (!v) return;
+  localStorage.setItem("gh_token", v);
+  document.getElementById("tokenInp").value = "";
+  updatePanelMode();
+  loadChannels();
+};
+
+document.getElementById("tokenForget").onclick = () => {
+  localStorage.removeItem("gh_token");
+  updatePanelMode();
+};
+
+document.getElementById("chanAdd").onclick = () => {
+  const inp = document.getElementById("chanInp");
+  const v = inp.value.trim();
+  if (!v) return;
+  if (!/^(https?:\/\/)?(www\.)?youtube\.com\/|^@|^UC[0-9A-Za-z_-]{10,}$/.test(v)) {
+    status("Похоже, это не ссылка на YouTube-канал", "err");
+    return;
+  }
+  if (channels.includes(v)) { status("Такой канал уже есть", "err"); return; }
+  channels.push(v);
+  inp.value = "";
+  saveChannels("Добавлен канал: " + v);
+};
+</script>
+</body>
+</html>

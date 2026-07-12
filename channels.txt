@@ -1,0 +1,11 @@
+# Список отслеживаемых каналов — по одной ссылке на строку.
+# Строки, начинающиеся с #, игнорируются.
+# Поддерживаемые форматы:
+#   https://www.youtube.com/@ИмяКанала
+#   https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxx
+#   https://www.youtube.com/c/НазваниеКанала
+#   @ИмяКанала
+#
+# Примеры (замени на свои):
+https://www.youtube.com/@MrBeast
+https://www.youtube.com/@mkbhd
