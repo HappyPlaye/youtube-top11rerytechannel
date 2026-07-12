@@ -51,6 +51,14 @@
   .delta { font-size: 16px; font-weight: 700; color: var(--green); }
   .delta small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; }
   .partial { color: #e8b23d; font-size: 11px; margin-left: 6px; }
+  .linkrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .vurl { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .copy {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; white-space: nowrap;
+  }
+  .copy:hover { color: var(--text); border-color: var(--muted); }
+  .copy.done { color: var(--green); border-color: var(--green); }
 
   .pager { display: flex; gap: 6px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
   .pbtn {
@@ -139,6 +147,7 @@
   </div>
 
   <div class="tabs">
+    <button class="tab" data-period="d1">За 1 час</button>
     <button class="tab active" data-period="d24">За 24 часа</button>
     <button class="tab" data-period="d7">За неделю</button>
     <button class="tab" data-period="d30">За месяц</button>
@@ -192,8 +201,25 @@ function render() {
             <small>всего: ${fmt(v.views)}</small>
             ${v[period+"_full"] === false ? '<span class="partial">⏳ история ещё копится</span>' : ''}
           </div>
+          <div class="linkrow">
+            <span class="vurl">${v.url}</span>
+            <button class="copy" data-url="${v.url}">копировать</button>
+          </div>
         </div>
       </a>`).join("");
+    list.querySelectorAll(".copy").forEach(b => b.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      const u = b.dataset.url;
+      const fallback = () => {
+        const t = document.createElement("textarea");
+        t.value = u; document.body.appendChild(t); t.select();
+        document.execCommand("copy"); t.remove();
+      };
+      if (navigator.clipboard) navigator.clipboard.writeText(u).catch(fallback);
+      else fallback();
+      b.textContent = "✓ скопировано"; b.classList.add("done");
+      setTimeout(() => { b.textContent = "копировать"; b.classList.remove("done"); }, 1500);
+    });
   }
 
   const pager = document.getElementById("pager");
